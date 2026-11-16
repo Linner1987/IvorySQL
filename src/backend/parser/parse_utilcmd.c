@@ -2877,15 +2877,6 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 				else if (constraint->contype == CONSTR_PRIMARY)
 					Assert(column->is_not_null);
 			}
-			else if (SystemAttributeByName(key) != NULL)
-			{
-				/*
-				 * column will be a system column in the new table, so accept
-				 * it. System columns can't ever be null, so no need to worry
-				 * about PRIMARY/NOT NULL constraint.
-				 */
-				found = true;
-			}
 			else if (cxt->inhRelations)
 			{
 				/* try inherited tables */
@@ -2931,6 +2922,13 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 						break;
 				}
 			}
+
+			/*
+			 * PostgreSQL 模式下，继承的 rowid 可以是普通列，需要先为它
+			 * 处理主键的 NOT NULL 约束。系统列仅在没有同名普通列时匹配。
+			 */
+			if (!found && SystemAttributeByName(key) != NULL)
+				found = true;
 
 			/*
 			 * In the ALTER TABLE case, don't complain about index keys not
